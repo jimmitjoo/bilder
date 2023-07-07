@@ -7,6 +7,7 @@ import (
 	v4 "github.com/aws/aws-sdk-go-v2/aws/signer/v4"
 	"io"
 	"net/http"
+	"os"
 	"time"
 )
 
@@ -36,7 +37,19 @@ type RemoveBackgroundPayload struct {
 	} `json:"output"`
 }
 
-func RemoveBackground(url string, headers map[string]string, inputSrcSigned *v4.PresignedHTTPRequest, outputDestSigned *v4.PresignedHTTPRequest) (*http.Response, error) {
+var (
+	autotoneURL         = "https://image.adobe.io/lrService/autoTone"
+	removeBackgroundURL = "https://image.adobe.io/sensei/cutout"
+)
+
+func RemoveBackground(inputSrcSigned *v4.PresignedHTTPRequest, outputDestSigned *v4.PresignedHTTPRequest) (*http.Response, error) {
+
+	// Create HTTP headers
+	headers := map[string]string{
+		"Authorization": "Bearer " + os.Getenv("ADOBE_ACCESS_TOKEN"),
+		"x-api-key":     os.Getenv("ADOBE_CLIENT_ID"),
+		"Content-Type":  "application/json",
+	}
 
 	// Create payload
 	payload := RemoveBackgroundPayload{
@@ -64,20 +77,12 @@ func RemoveBackground(url string, headers map[string]string, inputSrcSigned *v4.
 		},
 	}
 
-	payloadJSON, err := json.Marshal(payload)
-	if err != nil {
-		fmt.Println(err)
-		return nil, nil
-	}
-
-	fmt.Println("Payload:", string(payloadJSON))
-
 	jsonPayload, err := json.Marshal(payload)
 	if err != nil {
 		return nil, err
 	}
 
-	req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonPayload))
+	req, err := http.NewRequest("POST", removeBackgroundURL, bytes.NewBuffer(jsonPayload))
 	if err != nil {
 		return nil, err
 	}
@@ -90,7 +95,15 @@ func RemoveBackground(url string, headers map[string]string, inputSrcSigned *v4.
 	return client.Do(req)
 }
 
-func InvokeAutotone(url string, headers map[string]string, inputSrcSigned *v4.PresignedHTTPRequest, outputDestSigned *v4.PresignedHTTPRequest) (*http.Response, error) {
+func Autotone(inputSrcSigned *v4.PresignedHTTPRequest, outputDestSigned *v4.PresignedHTTPRequest) (*http.Response, error) {
+
+	// Create HTTP headers
+	headers := map[string]string{
+		"Authorization": "Bearer " + os.Getenv("ADOBE_ACCESS_TOKEN"),
+		"x-api-key":     os.Getenv("ADOBE_CLIENT_ID"),
+		"Content-Type":  "application/json",
+	}
+
 	// Create payload based on AutotonePayload struct
 	payload := AutotonePayload{
 		Inputs: struct {
@@ -113,20 +126,12 @@ func InvokeAutotone(url string, headers map[string]string, inputSrcSigned *v4.Pr
 		},
 	}
 
-	payloadJSON, err := json.Marshal(payload)
-	if err != nil {
-		fmt.Println(err)
-		return nil, nil
-	}
-
-	fmt.Println("Payload:", string(payloadJSON))
-
 	jsonPayload, err := json.Marshal(payload)
 	if err != nil {
 		return nil, err
 	}
 
-	req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonPayload))
+	req, err := http.NewRequest("POST", autotoneURL, bytes.NewBuffer(jsonPayload))
 	if err != nil {
 		return nil, err
 	}
@@ -153,7 +158,15 @@ func fetchStatus(url string, headers map[string]string) (*http.Response, error) 
 	return client.Do(req)
 }
 
-func PollStatus(resp *http.Response, headers map[string]string) error {
+func PollStatus(resp *http.Response) error {
+
+	// Create HTTP headers
+	headers := map[string]string{
+		"Authorization": "Bearer " + os.Getenv("ADOBE_ACCESS_TOKEN"),
+		"x-api-key":     os.Getenv("ADOBE_CLIENT_ID"),
+		"Content-Type":  "application/json",
+	}
+
 	defer func(Body io.ReadCloser) {
 		err := Body.Close()
 		if err != nil {
@@ -165,9 +178,6 @@ func PollStatus(resp *http.Response, headers map[string]string) error {
 	if err != nil {
 		return err
 	}
-
-	fmt.Println("Headers:", resp.Header)
-	fmt.Println("Response Body:", string(body))
 
 	var tmp map[string]interface{}
 	err = json.Unmarshal(body, &tmp)
@@ -189,8 +199,6 @@ func PollStatus(resp *http.Response, headers map[string]string) error {
 		return fmt.Errorf("invalid self link")
 	}
 
-	fmt.Println("Self Link:", url)
-
 	for {
 		respStatus, err := fetchStatus(url, headers)
 		if err != nil {
@@ -201,8 +209,6 @@ func PollStatus(resp *http.Response, headers map[string]string) error {
 		if err != nil {
 			return err
 		}
-
-		fmt.Println("Status Response Body:", string(bodyStatus))
 
 		var tmpStatus map[string]interface{}
 		err = json.Unmarshal(bodyStatus, &tmpStatus)
@@ -235,8 +241,6 @@ func PollStatus(resp *http.Response, headers map[string]string) error {
 				return fmt.Errorf("invalid output data")
 			}
 		}
-
-		fmt.Println("Output:", output)
 
 		if tmpStatus["status"] != nil {
 			status, ok := tmpStatus["status"].(string)
