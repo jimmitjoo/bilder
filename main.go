@@ -11,11 +11,9 @@ import (
 )
 
 var (
-	region              = os.Getenv("AWS_REGION")
-	srcKey              = "inputs/asdsad.jpeg"
-	destKey             = "outputs/tjenaberra.jpg"
-	autotoneURL         = "https://image.adobe.io/lrService/autoTone"
-	removeBackgroundURL = "https://image.adobe.io/sensei/cutout"
+	region  = os.Getenv("AWS_REGION")
+	srcKey  = "inputs/asdsad.jpeg"
+	destKey = "outputs/tjenaberra.jpg"
 )
 
 func main() {
