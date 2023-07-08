@@ -95,7 +95,8 @@ func PollStatus(resp *http.Response) error {
 			// Use tmpOutput as the value for output
 			output = tmpOutput
 		} else {
-			return fmt.Errorf("invalid outputs data")
+			message := tmpStatus["message"].(string)
+			return fmt.Errorf(message)
 		}
 
 		if len(outputs) > 0 {
